@@ -1,0 +1,905 @@
+---
+title: "STA 141A Nolan Tanaka Final Project"
+author: "Nolan Tanaka"
+date: '2023-06-12'
+output: html_document
+---
+
+# Abstract: 
+
+This project is going to investigate a data set that looks at 4 different mice and looks at factors within them such as the neural activity along with looking at the stimuli. When looking at this data set and through this experiment, we will be able to analyze and investigate how these various mice differ from each other and how based off of these samples, we can predict and infer certain aspects of information. This project will look at various graphs and tables which will compare and look at the similarites within the data. These graphs and tables will consist of bar graphs that compare how many successes and failures occurred within each trial. It will also look at tables that consist of data for various different variables that will be used to further improve the predictive model which is the end goal. Next, various actions will be made on the data such as transformations or applying certain models to see which one fits best. What applying these models and other actions on the data would do is that it can help us gauge on whether or not that model is a better fit than other models which will contribute in building our end model. Through all of these findings and gatherings, we can move to the next step which is building a predictive model to help determine if a trial will be a success or failure solely off of these past finding. Then, this predictive model will be put to the test by testing it on 100 different trials that will be randomly chosen from the 18 different sessions in the experiment. Lastly, the accuracy of the predictive model will be measured to see how many correct predictions have been made on the 100 random assignments. Overall, this project will be good when looking at the various factors within each mice session which will be used to predict whether or not it will be successful or not. This project will be very informational and help in the overall inferences and assumptions for the mice dataset that will be looked at further. 
+
+```{r, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(kableExtra)
+library(forecast)
+library(caret)
+
+comment=NA # to remove all hashes
+```
+
+
+# Section 1: Introduction
+Within this project, the main question of interest or goal that is trying to be accomplished is to build a model that predicts the outcome of various trials for the mice. In order to help build this predictive model about the mice, we will use 2 main methods which are looking at the neural activity data and by also looking at the stimuli which further examines the left right contrasts. The overall impact of the results that yield from this project can show how neural activity and stimuli affected the original experiment. Another way that this data analysis has an impact is by showing that a predictive model can be used in any circumstance to help predict certain things based off of a first sample of data. This shows that predictions and models can be made on certain experiments to help samplers look at various factors which in this case is neural activity and stimuli, to help save time and data by using predictive models. The real world motivation for this project is to see how little patterns and connections within the data can be used to make models and predictions for the future. 
+
+For this project, the overall setup will be exploring the data and looking at it on a deeper level. Next, we will integrate the data and look at various graphs to see the relationships between the variables within the data. Finally, in regards to setup, we will make a predictive model and look at how well the model can be used in order to predict further data. The main source of data for this project is looking at the Steinmetz et al. which looks at 10 different mice during a span of 39 periods of time. The key variables for our data as discussed earlier is the mouse name, mouse date, what session/period the data was taken, and many other variables that will be discussed later on. Some of the possible hypotheses that will be looked at within this project is whether or not the predictive model fits the predictions along with the possible hypotheses of if the mice are connected or not through looking at different variables and patters. 
+
+
+
+# Section 2: Exploratory Analysis
+
+This section of the project will look further into the data set and analyze various tables which contain valuable information regarding the number of neurons and left/right contrasts. Also in this section, we will look at the feedback types and explain how they work and what the different values mean, To summarize, this section is about looking at the various sessions and see if there are any patterns or trends across them. This is the basis of gathering the data and comparing it using tables and other forms of graphs. 
+
+
+
+### Table of Mouse Name and Date Sampled On
+
+This section of the report will give a general table of all of the mice names along with when that sample was taken on. 
+
+```{r, echo=FALSE, comment=NA}
+setwd("/Users/nolantanaka/Desktop/sessions")
+
+session = list()
+overview = data.frame(mouse_name = character(), date_exp = character())
+
+for(i in 1:18){
+  session[[i]] = readRDS(paste("session", i, ".rds", sep=""))
+  overview = rbind(overview, data.frame(mouse_name = session[[i]]$mouse_name, 
+                                        date_exp = session[[i]]$date_exp))
+}
+print(overview)
+
+
+
+
+data_frame = data.frame()
+for(i in 1:18){
+  temp = data.frame(session[[i]]$feedback_type, session[[i]]$mouse_name)
+  colnames(temp)=c("feedback_type", "mouse_name")
+  data_frame = rbind(data_frame, temp)
+}
+```
+
+When looking at the output, we can see a 18 row by 2 column table that shows the mouse name, along with the date that specific sample was taken on. For instance, in the first line, we can see that the mouse named Cori had a sample taken on December 14th, 2016 that was used for the experiment. When looking at the table, we can see that there are a total of 4 different mice for this experiment along with the earliest date that one of the samples was taken was on December 14th, 2016, and the latest was on December 11th, 2017. 
+
+
+
+### Data Table for 8 Variables Within Dataset(First 6 Rows)
+
+```{r, include=FALSE, echo=FALSE}
+library(data.table)
+
+data.table = data.table()
+for(i in 1:18){
+  data.names = data.frame(
+    contrast_left_data = session[[i]]$contrast_left,
+    contrast_right_data = session[[i]]$contrast_right,
+    session_data = rep(1, length(session[[i]]$contrast_left)),
+    mouse_data = session[[i]]$mouse_name,
+    number_of_neurons_data = length(session[[i]]$brain_area),
+    brain_area_data = length(unique(session[[i]]$brain_area)),
+    number_of_trials_data = length(session[[i]]$spks),
+    feedback_type_data = session[[i]]$feedback_type
+  )
+  colnames(data.names) = c(
+    "contrast_left", "contrast_right", "session", "mouse",
+    "number_of_neurons", "brain_area", "number_of_trials", "feedback_type"
+  )
+  data.table = rbindlist(list(data.table, data.names))
+}
+
+data_frame = as.data.frame(data.table)
+data_frame$contrast_left = as.factor(data_frame$contrast_left)
+data_frame$contrast_right = as.factor(data_frame$contrast_right)
+data_frame$session = as.factor(data_frame$session)
+data_frame$mouse = as.factor(data_frame$mouse)
+data_frame$feedback_type = as.factor(data_frame$feedback_type)
+```
+
+
+This portion of the data analysis will look at 8 different variables and the values for the first 6 rows of the data. 
+
+
+```{r, echo=FALSE, comment=NA}
+head(data_frame)
+```
+
+When analyzing this table, we can see the output and analyze what each column means. First, when looking at this table and each column, we can see that the first column is left side contrast. What this column implies is the left side contrast which looks at the stimuli within the data and overall, how it has an impact on the experiment. The second column is the same exact description as the first column except it is for the right side instead of the left. This value also looks at the stimuli and neural activity. These contrast values can have values of 0, .25, .5, or 1. Next, the column that is labelled session represents which session the observation was taken in since there were multiple sessions within the whole entire experiment. The mouse column represents which mourse within the experiment that exact row was taken for whether it was Cori or Hench. The number of neurons represents the amount of neurons that was in the mice's visual corte when that sample was taken for the experiment. This number was recorded by looking at the spike trains which takes many various factors into account. Next, the brain area for each observation was recorded which talks about the total area of the brain that was used for each sample. Lastly, the total number of trials along with the feedback type was recoded which looks at some of the previous values and gives a value of 1 or -1 depending on the other data within that sample. Overall, this table is very important in our experiment because it shows us a sample of every single sample that was taken for this whole experiment along with a plethora of other information to help us make conclusions and hypotheses. 
+
+
+
+
+### Summary Table For The Same 8 Variables
+
+This part of the section will look further into the same 8 variables in the data table above and will give summary statistics for all of them. 
+
+```{r, echo=FALSE, comment=NA}
+summary(data_frame)
+
+
+num_neurons_data = length(unique(data_frame$number_of_neurons))
+cat("Total Number of Neurons: ", length(unique(data_frame$number_of_neurons)), "\n")
+
+
+num_trials_data = length(unique(data_frame$number_of_trials))
+cat("Total Number of Trials: ", length(unique(data_frame$number_of_trials)), "\n")
+
+
+stimuli_conditions_left_data = unique(data_frame$contrast_left)
+cat("Stimuli Conditions (contrast_left): ", toString(unique(data_frame$contrast_left)), "\n")
+
+
+stimuli_conditions_right_data = unique(data_frame$contrast_right)
+cat("Stimuli Conditions (contrast_right): ", toString(unique(data_frame$contrast_right)), "\n")
+
+
+
+
+feedback_types_data = unique(data_frame$feedback_type)
+cat("Feedback Types: ", toString(unique(data_frame$feedback_type)), "\n")
+
+```
+
+When looking at the summary for the tables above, we can see a minimum, median, mean, and maximum for the number of neurons, brain area, and number of trials total. First, when looking at the summary for the number of neurons for the entire experiment, we can see that it has a minimum of 474, median of 857, mean of 909.8, and maximum of 1769. Next, when looking at the brain area summary for the overall experiment, we can see that the lowest observation recorded was 5, the mean for the brain areas was 9.678, and the maximum was 15. Lastly, when looking at the summary chart for the number of trials for each sample that was recorded, we can see that the lowest was 114, had an average of 302.2, and lastly the highest value that was recorded was 447. 
+
+When looking at the left right contrasts summary tables, we can see that for both left and right, 0 was the most common value with 1 being the next most common. When looking at the left contrasts, the .25 contrast value was less common than the .5 value, but when looking at the right contrast, the .25 was more common than the .5. Also, it shows us that regarding feedback type, there were a toal of 1473 that were assigned a value of -1 which means that depending on what way the wheel is being turned, the left or right contrast was less than the other. Since there were 1473 total assigned to -1, that means that there were 3608 assigned to the value of 1 which means depending on the way the wheel was being turned, the left or right was greater than the other. 
+
+At the bottom of the output, we can see that there were a total of 18 different trials that were ran throughout. Also, it shows us that the possible values for the stimuli conditions are 0, .25, .5, and 1 along with the feedback types giving a value of 1 or -1 which was discussed briefly above. 
+
+
+
+```{r, include=FALSE, echo=FALSE}
+session = list()
+for(i in 1:18){
+  session[[i]] = readRDS(paste("/Users/nolantanaka/Desktop/sessions/session", i, ".rds", sep = ""))
+}
+
+data_frame = data.frame()
+for(i in 1:18){
+  temp = data.frame(session[[i]]$feedback_type, session[[i]]$mouse_name)
+  colnames(temp) = c("feedback_type", "mouse_name")
+  data_frame = rbind(data_frame, temp)
+  
+}
+df.counts = data_frame %>% group_by(mouse_name, feedback_type) %>% summarise(n = n()) %>%
+  mutate(feedback_type = ifelse(feedback_type == 1, "Success", "Failure"))
+```
+
+
+
+### Table Showing Various Components of the Dataset
+
+The table that is going to be depcited will show values regarding various factors for our experiment such as area of the brain and neuronic activity.
+
+```{r, echo=FALSE, comment=NA}
+session.summary.table =length(session)
+
+sessions.summary = tibble(mouse_name = rep('name', session.summary.table), n_brain_area = rep(0,session.summary.table), n_neurons = rep(0,session.summary.table), success_rate = rep(0,session.summary.table))
+
+for(i in 1:session.summary.table){
+  tmp = session[[i]];
+  
+  sessions.summary[i,1]=tmp$mouse_name;
+  
+  sessions.summary[i,2]=length(unique(tmp$brain_area));
+  
+  sessions.summary[i,3]=dim(tmp$spks[[1]])[1];
+  
+  sessions.summary[i,4]=length(tmp$feedback_type);
+  
+  sessions.summary[i,5]=mean(tmp$feedback_type+1)/2;
+}
+
+print(sessions.summary)
+```
+
+Through looking at the table, we can see various columns of data for the certain mice and their specific sample. First, on the left, we can see the mouse name, and then in the second column, we can see the brain area for each specific sample. Next, we can also see the number of neurons for each sample for the mice and see that there are a wide range of neurons for the dataset. Lastly, on the far right, we can see a new column of data that has not been discussed prior which is the overall success rate for each sample. When looking at this, column of data, it displays the success rate for each mice and the number that it displays is a measure of how likely that sample is going to be successful or not. 
+
+
+
+### Average Number Of Spikes Per Trial In Each Brain Area
+
+This table will look further into the number of spikes for trial 4 session 1 in the different areas of the brain. 
+
+```{r, echo=FALSE, comment=NA}
+session.selection = 1
+trial.selection = 4
+
+
+average.spikes.brain.areas = function(trial.selection, this_session){spikes.for.trial = this_session$spks[[trial.selection]]
+  area = this_session$brain_area
+  spikes.count.trial=apply(spikes.for.trial,1,sum)
+  spk.average.tapply=tapply(spikes.count.trial, area, mean)
+  return(spk.average.tapply)
+}
+
+
+
+all.brain.summary = length(session[[session.selection]]$feedback_type)
+n.area = length(unique(session[[session.selection]]$brain_area))
+
+all.trails.summary = matrix(nrow=all.brain.summary, ncol = n.area+1+2+1)
+
+for(trial.selection in 1:all.brain.summary){
+  all.trails.summary[trial.selection,]=c(average.spikes.brain.areas(trial.selection, this_session = session[[session.selection]]),
+  
+  session[[session.selection]]$feedback_type[trial.selection],
+  
+  session[[session.selection]]$contrast_left[trial.selection],
+  
+  session[[session.selection]]$contrast_right[session.selection],
+                          trial.selection)
+}
+
+
+colnames(all.trails.summary)=c(names(average.spikes.brain.areas(trial.selection,this_session = session[[session.selection]])),'feedback', 'left contr.','right contr.','id')
+
+all.trails.summary = as_tibble(all.trails.summary)
+print(all.trails.summary)
+```
+
+When looking at the table that is outputted from the data, we can see that there are 12 columns of data with values in each of them. As far as each category, we can see the values which are many decimals and this gives us useful information about our model and overall experiment information. This gives us information about average spike count for the various areas of the brain and how each category affects the overall session and experiment. Also in this table, it gives us information about the feedback which as explained earlier yields us a value of 1 or 0. Also, in addition to the previous tables, it gives us information on the left and right contrasts for each sample that was taken for the experiment. Lastly in the far right column, we can see a number for the specific sample so it is easier to sort our data later down the line. Overall, this table that is shown above gives us a lot of useful information when looking to make a predictive model for our experiment. Even though this output just gives us a simple table of data, it gives us information for each sample that was recorded that looks into the various areas of the brain along with the contrats for each. 
+
+
+
+
+### Session 1 Average Spike Counts For Brain Areas
+
+This section will display the average spike counts for the various areas of the brain within Session 1. 
+
+```{r, echo=FALSE, comment=NA}
+session.selection = 1
+trial.selection = 4
+
+spikes.for.trial = session[[session.selection]]$spks[[trial.selection]]
+area=session[[session.selection]]$brain_area
+
+spikes.count.trial=apply(spikes.for.trial,1,sum)
+spk.average.tapply=tapply(spikes.count.trial, area, mean)
+
+tmp = data.frame(area = area, spikes = spikes.count.trial)
+
+spk.average.dplyr = tmp %>% group_by(area) %>% summarize(mean = mean(spikes))
+
+average.spikes.brain.areas = function(trial.selection, this_session){spikes.for.trial = this_session$spks[[trial.selection]]
+  area = this_session$brain_area
+  spikes.count.trial=apply(spikes.for.trial,1,sum)
+  spk.average.tapply=tapply(spikes.count.trial, area, mean)
+  return(spk.average.tapply)
+}
+
+average.spikes.brain.areas (1,this_session = session[[session.selection]])
+```
+
+When looking at the output of this code, it provides us with values for various spike counts for a specific session and sample. In this case, we are looking at session 1 specifically and this tells us a lot about session 1 and how it is similar or different from the other sessions. Also what this tells us about is it gives us further information on the number of spikes in a certain area within the brain which can help us make some conclusions and hypotheses for the experiment. Finally, when looking at the values, we can see that LS, SUB, and DG all have the highest average spikes within certain areas of the brain, and we can also see that ACA, MOs, and root had the lowest spikes in areas of the brain. Overall, even though this just gives us information regarding average spikes within certain areas of the brain, it can help us make certain conclusions and inferences that can be useful for our overall experiment. 
+
+
+
+### Graph of Spike Counts of Areas Within the Brain for Session 1
+
+In this section, a graph will be shown that depicts the average number of spikes for various areas of the brain. The data for this graph was taken from Session 1 of the experiment. 
+
+```{r, echo=FALSE, comment=NA}
+color.graph = rainbow(n = n.area, alpha = 0.7)
+
+plot(x = 1, y = 0,
+     col = 'white', xlim = c(0, all.brain.summary), ylim = c(0, 4),
+     xlab = "Trials", ylab = "Average spike counts",
+     main = paste("Average Spike Counts for Areas Within the Brain for Session", session.selection))
+
+for (i in 1:n.area) {
+  lines(y = all.trails.summary[[i]], x = all.trails.summary$id,
+        col = color.graph[i], lty = 2, lwd = 0.9)
+  lines(smooth.spline(all.trails.summary$id, all.trails.summary[[i]]),
+        col = color.graph[i], lwd = 3)
+}
+
+legend("topright", legend = colnames(all.trails.summary)[1:n.area],
+       col = color.graph, lty = rep(1, n.area), cex = 0.8)
+```
+
+From this graph, we can see the various spikes for the different areas of the brain that we are looking at in the experiment, specifically when looking at session 1. Within this graph, we can see many many small dotted lines which represent the 8 different areas of the brain spikes that we are looking at along with solid curves which represent the overall trend of average spikes for a area within the brain. Also for this plot, we can see that all of the large lines tend to generally stay the same value wise as an overall trend, but other than that, there are no true patterns for this graph. Overall, this graph is very useful in telling us the overall trends for average spikes in each specific area of the brain for session number 1. This is useful in looking at whether or not there are trends in the various sessions which helps us in making our end model to predict the outcome of each trial. 
+
+
+
+### Plot for Time vs. Neurons in Brain Areas for Trial 4 Session 1
+
+In this section, a plot that summarizes time, neuronic activity and area of the brain will be shown based off of Trial 4 Session 1
+
+
+```{r, echo=FALSE, comment=NA}
+i = list()
+i$s = 1
+i$t = 4
+
+plot.specific.trial = function(trial.selection, area, color.graph, this_session) {
+  spks = this_session$spks[[trial.selection]]
+  n.neuron = dim(spks)[1]
+  time.points = this_session$time[[trial.selection]]
+
+  plot(0, 0, xlim = c(min(time.points), max(time.points)), ylim = c(0, n.neuron + 1), col = 'white', xlab = 'Time', yaxt = 'n', ylab = 'Neuron', main = "Raster Plot for Session 1 Trial 4")
+  for (i in 1:n.neuron) {
+    i.a = which(area == this_session$brain_area[i])
+    col.this = color.graph[i.a]
+
+    ids.spike = which(spks[i, ] > 0)
+
+    if (length(ids.spike) > 0) {
+      points(x = time.points[ids.spike], y = rep(i, length(ids.spike)), pch = '.', cex = 3, col = col.this)
+    }
+
+  }
+
+  legend("topright", legend = area, col = color.graph, pch = 16, cex = 0.8)
+}
+
+varname = names(all.trails.summary)
+area = varname[1:(length(varname) - 4)]
+plot.specific.trial(1, area, color.graph, session[[i$s]])
+
+```
+
+In the raster plot above, it shows us the overall spike activity in relation to the amount of neurons for trial 4 in session 1. This plot although it can be hard to read is very useful in our overall experiment because it can help us see the relationship between the neurons and time for trial 4 session 1 to see if there is a specific pattern or if it is completely random. Also, in the key, we can see each area of the brain and the color coordinated graph to each point showing how each point within the brain area differs. Next, we can see that the time ranges from 424.2 to 424.7 which is useful when making our predictive model because it allows us to infer that the time can be within that same interval for trial 4 session 1. Overall, although this plot has a lot of points and colors going on within it, it gives us a multitude of useful information for our overall experiment regarding looking at patterns or general trends for our dataset. It can also give us useful information regarding the brain areas and how they are affected by neuron and time. 
+
+
+
+
+
+### Side by Side  of Scatterplot for Session 1 Trial 4 and 70
+
+The following section will contain 2 scatter plots that both look at the relationship between time and neurons. One of the plots will show the relationship for Trial 4 in Session 1 and the other will show for Trial 70 in Session 1. 
+
+```{r, echo=FALSE, comment=NA}
+varname = names(all.trails.summary);
+area = varname[1:(length(varname)-4)]
+par(mfrow=c(1,2))
+plot.specific.trial(4,area, color.graph, session[[session.selection]])
+plot.specific.trial(70,area, color.graph, session[[session.selection]])
+
+```
+
+When looking at the side by side for the two raster plots above, it shows us the relationship for Time and Brain Area. On the left, it shows us the same exact plot as above, which is for Trial 4 and Session 1. On the right, it shows us Time and Neurons for various areas of the brain for Trial 70 Session 1. As stated when analyzing the plot above, it is important in our overall experiment because it gives us another plot of session 1 which can show us patterns or other patterns that can be seen within the dataset. When comparing the two, it is seen that the neon green areas are very similar to each other in both plots, along with the orange and purple parts being in the same general time slots too. Where the two plots mainly differ is in the bottom of the plots where it shows various areas of the brain in different times which is important because it tells us that the 2 trails that were both sampled in session 1 do have some different characteristics from each other. Overall, when comparing the Time, neuron, and area of the brain graphs for the two different trials both taken from session 1, it gives us a lot of useful insight for our model and experiment because it tells us about patterns. 
+
+
+
+
+### Average Number of Spikes for Session 1 Trial 4
+
+In this section, the average number of total spikes for session 1 trail 4 will be looked at further. 
+
+```{r, echo=FALSE, comment=NA}
+spks.trial = session[[1]]$spks[[4]]
+total.spikes = apply(spks.trial, 1, sum)
+avg.spikes = mean(total.spikes)
+(avg.spikes = avg.spikes)
+```
+
+This number of 1.8311 is the average number of spikes within all areas of the brain for the entire session 1 trial 21. This number is very very important in creating our predictive model because it can help us determine whether or not the trial will be a success or failure as the average number spikes plays a large role in that. Also, this number can help us get a general gauge of how many average spikes occur within the individual trials to spot any obvious outliers for our dataset. Overall, although this number is just a mean for one of the categories of our data, it is very helpful and important and contributes a lot to our end goal. 
+
+
+
+### Average Spike Counts for Session 1 Trials
+
+This part will look at a line graph for the Average number of spike counts for all of the Session 1 trials for our experiment. 
+
+```{r, echo=FALSE, comment=NA}
+avg_spikes = list()
+for (i in 1:18) {
+  avg_spikes[[i]] = sapply(session[[i]]$spks, function(x) mean(x))
+}
+
+library(ggplot2)
+data = data.frame(trial = 1:length(avg_spikes[[3]]), avg_spikes = avg_spikes[[3]])
+
+ggplot(data, aes(x = trial, y = avg_spikes)) +
+  geom_line() +
+  xlab("Trial") +
+  ylab("Average Spikes") +
+  ggtitle("Average Spikes for Various Trials")
+```
+
+In the line graph shown above, it depicts the Average number of spike trains within the brain for all of the session 1 trials. This graph is very useful and telling for our experiment because it can show us how the average number of spikes fluctuates for Session 1 and overall, how inconsistent the spikes is for the samples. Also, when looking at the graph itself, we can see that the highest spike occurs at around trial 120 with the spike reaching to around .073. Another feature of the graph, is that the average hovers around .058 which differs largely from the starting point of .06 and the ending point of .048. Overall, this line graph although it has no consistent patterns can tell us a lot about session 1 and how there are no true patterns within it. This graph showing no true patterns is useful when making the predictive model because it gives a source of inconsistency throughout the data set which shows that the average number of spikes is never going to be consistent.  
+
+
+
+### Differences in average spikes from trial to trial for Session 1
+
+The next graph will show the difference in average spikes for all of the session 1 trials. 
+
+```{r, echo=FALSE, comment=NA}
+diff_avg_spikes = diff(avg_spikes[[3]])
+
+library(ggplot2)
+data = data.frame(trial = 1:length(diff_avg_spikes), diff_avg_spikes = diff_avg_spikes)
+
+ggplot(data, aes(x = trial, y = diff_avg_spikes)) +
+  geom_line() +
+  xlab("Trial") +
+  ylab("Change in Average Spikes") +
+  ggtitle("Difference in Average Spikes for Trials")
+
+```
+
+The line graph above depicts the differences in average spikes for different trials within the experiment. This graph similar to the one above, shows no true patter although there is a pattern of always going up or down and never truly rising or declining. What this is implying is that when one trial has a high average number of spikes, the next trial after that would likely have a low number of spikes based on the fluctuating trends that can be seen in the line graph. Also within this line graph, it can show us certain trials and the change from the previous trial which can tell us if there are any coincidental repeats of average spikes within the data. Overall, this line graph is important when building our prediction model and for our experiment as a whole because it can tell us about average number of spikes for various trials throughout the whole experiment which can tell us about that specific session for our data set. This is a very important graph for the long run because it can tell us a lot about how the average spikes can act through the trials as the various trials have no true patterns at all in any instance of this experiment. 
+
+
+### Histogram of Average Spikes For All Sessions
+
+Within this section, a histogram for every session will be shown which looks at the average number of spikes for all of the trials within that session. 
+
+```{r, echo=FALSE, comment=NA}
+library(tidyverse)
+
+avg_spikes_df = tibble(session = integer(), avg_spikes = numeric())
+
+for (i in 1:18) {
+  avg_spikes_df = avg_spikes_df %>%
+    add_row(session = rep(i, length(avg_spikes[[i]])), avg_spikes = avg_spikes[[i]])
+}
+
+ggplot(avg_spikes_df, aes(x = avg_spikes)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") +
+  facet_wrap(~session) +
+  xlab("Average Spikes") +
+  ylab("Count") +
+  theme_minimal() +
+  ggtitle("Histogram of Average Spikes per Session")
+
+```
+
+When looking at the histograms for the average spikes for the various sessions, this gives us a good visual of the frequencies of the average spikes for each session. In general, when looking at the histograms from session to session, there a no general trends from histogram to histogram, although it can be seen that a majority of the histograms are normally distributed with a few being skewed left or skewed right. Also from these histograms, it can be seen about which sessions have a higher total number of trials within it since histograms are a measure of frequency. What this can tell about the experiment is that if a histogram has a lot of bars that have high frequencies, then it would have more trials within that session rather than a histogram that has minimal bars at low frequencies. From looking at the histograms, it can be seen that session 10 or session 15 have the highest number of trials, and that session 1 and session 3 most likely have the lease amount of trials within it. Overall, these histograms for the average number of spikes for the sessions of our experiment can gives us a lot of insight regarding our predictive model which will help us predict in whether or not the trial will be a success of failure. ALthough these are just simple histograms for the various sessions of our data, it can gives us a lot of information and is very helpful for our end goal of the experiment as explained before. 
+
+
+
+
+### Bar Graph Comparing Successes and Failures For Each Mouse
+
+Within this part, a bar graph will be shown that depicts the frequencies of successes and failures for each mouse in our samples. 
+
+```{r, echo=FALSE, comment=NA}
+ggplot(df.counts, aes(x = mouse_name, y = n, fill = feedback_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Successful and Failed Trials for the 4 Mice", x = "Mouse Name", y = "Frequency",
+       fill = "Feedback Type") +
+  theme_bw()
+
+```
+
+When looking at the output of the histogram, we can see a frequency of the number of successes and failures for each individual rat. First, when looking at the mouse named Cori, we can see that the success bar is higher than the failures bar, and although its not double the amount, it is still a good amount higher than the other. Next, when analyzing the histogram for Forssmann, we can see that the success bar is double the failures by which means that the number of successes was way more common than the occurrence of a failure. When looking at the Hench mouse, we can see that it also has double the success amount when comparing it to the number of failures. Lastly, Lederberg had around triple the amount of successes when compared to failures which is similar to the other mice. Overall, the trend that is seen in all 4 histograms is that the success bar is significantly higher than the failure bar which means that for the overall data, the chances of sampling a success is more common than sampling a failure. 
+
+
+
+
+
+This concludes the exploratory analysis section of the experiment. Throughout this section countless graphs, plots, and tables have been looked at which will all be used to further look for trends and other patterns which will help us reach the end goal of producing a predictive model for our experiment. Although some of the graphs and plots looked at may have been hard to interpret and read, all of them regardless helped in getting a better visual understanding of the data as opposed to just looking at it on a table of numbers in columns. Overall, the exploratory analysis serves as the base for our experiment, and is the first stepping stone in creating the predictive model for our data. 
+
+
+
+
+
+# Section 3: Data Integration
+
+
+Within this portion of the project, the various sessions will be looked at and compared using various methods. This section is meant to analyze any similarities or differences from session to session which will help us recognize patterns or trends which will help us build our predictive model. In order to look at trends and build our model, we will apply different tests and fit models to our data which will give us p-values and other statistical numbers which give us valuable information. Overall, this section of the project is very very important since it will look at patterns or differences which will play a large role in building our predictive model. 
+
+
+### Combining All Sessions Into 1 Data Table
+
+Within this section, we will combine all of the sessions into one table which will allow us to view all of the data in one section. 
+
+```{r, echo=FALSE, comment=NA}
+session.summary <- list()
+
+for (i in 1:18) {
+  trial.summary <- data.frame(
+    session_number = numeric(),
+    feedback_type = numeric(),
+    contrast_left = numeric(),
+    contrast_right = numeric(),
+    spks_mean = numeric(),
+    spks_sd = numeric()
+  )
+
+  for (j in 1:length(session[[i]]$feedback_type)) {
+    spks_mean <- mean(c(session[[i]]$spks[[j]]))
+    spks_sd <- sd(c(session[[i]]$spks[[j]]))
+
+    trial.summary <- rbind(trial.summary, data.frame(
+      session_number = i,
+      feedback_type = session[[i]]$feedback_type[j],
+      contrast_left = session[[i]]$contrast_left[j],
+      contrast_right = session[[i]]$contrast_right[j],
+      spks_mean = spks_mean,
+      spks_sd = spks_sd
+    ))
+  }
+
+  session.summary[[i]] <- trial.summary
+}
+
+entire.session.summary <- bind_rows(session.summary)
+```
+
+The code above combines the entire data set combined into one table which contains information for each session along with the corresponding spike means and standard deviations. In this table, since it combines all of data summaries into one table, we can get very useful information regarding the left and right contrasts which are very important when looking to create our predictive model for our end goal. From the table, we can also get information regarding the feedback type which as explained earlier is a value of -1 or 1 depending on the circumstances. From this summary table, we can gather a plethora of information for the sessions and trials which will all help in creating our predictive model. Overall. although this table has a lot of similar information as some of the tables in the past, it helps us for our experiment because it allows us to see a side by side comparision for all of the sessions along with the variables within them. 
+
+
+
+
+### Applying ARIMA to the dataset
+
+Next, this part of the experiment will apply ARIMA to the data to help get a better undersatnding of the data by looking at tables and graphs.
+
+```{r, echo=FALSE, comment=NA}
+new.data.datframe = do.call(rbind, lapply(session, function(s) {
+  data.frame(Date = s$date_exp,
+             FeedbackType = s$feedback_type)
+}))
+
+new.data.datframe = new.data.datframe[order(new.data.datframe$Date),]
+
+ts.data.new = ts(new.data.datframe$FeedbackType)
+
+fit = auto.arima(ts.data.new)
+
+data_frame = data.frame(Time = 1:100, Data = sin(0.1 * (1:100)))
+
+```
+
+Using the code above, we were able to fit and apply an ARIMA model on our data. What this does for our overall experiment, is that it allows us to make inferences and predict some of the unknown data points based off of previous trends or patterns. What fitting an ARIMA model also does is that it also gives us a better overall knowledge of the data as it tells us about current trends within the data which are then used to further predict and analyze the data points. 
+
+
+
+### Line Plot for Data After ARIMA
+
+In this portion, a line graph for the data after ARIMA was applied will be looked at. 
+
+```{r, echo=FALSE, comment=NA}
+ggplot(data_frame, aes(x = Time, y = Data)) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Time", y = "Feedback Type", title = "Line Plot of Feedback Type over Time")
+
+new.prediction.models = function(sessions, feedback_type) {
+  n_sessions = length(sessions)
+  models.new.arima = list()
+
+  for (i in 1:n_sessions) {
+    session = sessions[[i]]
+    avg_spikes = average_spike_counts(session)
+    model = glm(feedback_type ~ avg_spikes, family = binomial())
+    models[[i]] = model
+  }
+
+  return(models.new.arima)
+}
+
+```
+
+The graph above is a line graph that compares the feedback type over an interval of time from 0 to 100. Since in the previous lines of code, we converted the feedback type into a numeric group of code, it allows us to put it on a line graph since it is number values instead of a categorical value. When looking at the line graph itself, it is a symmetric line graph that is reflected over the time value of 47. What this can tell us about the relationship between feedback type and time is that it shows that we can predict and infer the trends and values which is the main goal of an ARIMA model. This discovery that we are able to predict the future values and trends of the new data is very good for our experiment and shows progress because it means that we succeed in correctly fitting an ARIMA model within our data. Although we may not be able to correctly predict the feedback type value itself, we are able to infer whether or not the value would be higher or lower than the previous feedback type value when looking at time. Next, another aspect of the line graph that gives us valuable information is that the feedback type values are positive and negative which helps us when building our predictive model as that is the end goal for our experiment. Overall, this simple line graph that compares time and feedback type is very helpful in gviing us a lot of information regarding our end goal of predicting whether or not a trial will be a success or failure. 
+
+
+
+
+### Fitting Linear Regression Model for the Data
+
+Now, we will look at fitting a linear regression model to our data. 
+
+```{r, echo=FALSE, comment=NA}
+linear.model.data = lm(feedback_type ~ contrast_left + contrast_right + spks_mean + spks_sd, data = entire.session.summary)
+
+summary(linear.model.data)
+```
+
+The output of the code produces a table above which is very similar to the past table, except for the fact that this one is based off of a linear regression model instead of the general linear model that was used previously. When looking at the output, we can see that for the residuals, the minimum value that was obtained was -1.76, and the maximum value that was observed was .8417. Also as far as the residuals go, the median is .5817 which is significantly closer to the maximum rather than the minimum value. Next, we can take a look at the coefficients chart. When looking at this chart, similar to the last table, it gives us the standard error, coefficients, and p-values for the left and right contrasts, spikes mean, and spikes standard deviation. When looking at the data being fitted to this model, we can see that similar to the general linear model, the right contrast coefficient is negative which could show a pattern although no conclusions can be made with the minimal data we currently have. Another aspect of information that can be obtained from the chart is that all of the p-values are above .05 which is a very common significance level. The fact that all of the p-values are above a significance level could be significant in our experiment because it could show that there is some oddity or other form of error that could have occurred. When looking at the bottom of the output, we can see that the p-value for the overall fitting is a very very small number that is close to zero which could mean that we could have some sort of error within our fitting. In the end, this fitting can be very telling and helpful in achieving our end goal of building a predictive model to predict the outcome of various trials. 
+
+
+
+### Looking at General Linear Model For Data
+
+In this section of the project, we will look at the data based off of a general linear model. 
+
+```{r, echo=FALSE, comment=NA}
+binary_feedback = ifelse(new.data.datframe$FeedbackType == -1, 0, 1)
+
+gen.linear.model = glm(binary_feedback ~ contrast_left + contrast_right + spks_mean + spks_sd, data = entire.session.summary, family = binomial)
+
+summary(gen.linear.model)
+
+```
+
+The table above shows an overall summary for the general linear model that was measured for all of the sessions within the data set. There is a lot of useful information in this table as it provides information about left and right contrasts along with the mean and standard deviation of the spikes. In the first part of the output, we can see the coefficients along with the standard error and p-values for all of the various categories. When looking at these values, we cannot gain much information from the coefficients themselves, but we can gain information when looking at the p-values. In any statistic class, a high p-value normally means that something is insignificant or in some way it is obscure. In the table above, the average number of spikes(spike mean), along with the right contrast value both have very high p-values which could imply that these values are obscure in some way. Another takeaway from this table is that the coefficients for the spike means and the right contrasts are negative. This could mean that there is a pattern between the two that if a coefficient is negative, then it could correlate to a high p-value which could show errors or obscurity within the calculations and models. Next, we can look at the AIC value which is the akaike information criterion which helps us predict model fit for our data set. In our case, when using the generalized linear model, we get an AIC value of 6072.4 which will be compared later on when using it on other types of models. Overall, this table when fitting the data to a general linear model tells us a lot about or data and is very informational for our experiment and helps us a lot in reaching our end goal. 
+
+
+
+### Fitting a Logistic Regression Model
+
+For the last fitting of models to our data, we will fit a logistic regression model
+
+```{r, echo=FALSE, comment=NA}
+entire.session.summary$binary_feedback = ifelse(entire.session.summary$feedback_type == -1, 0, 1)
+
+logistic.regression.model = glm(binary_feedback ~ contrast_left + contrast_right + spks_mean + spks_sd, data = entire.session.summary, family = "binomial")
+
+summary(logistic.regression.model)
+
+plot(logistic.regression.model, which = c(1, 2, 3))
+
+```
+
+When looking at only the logistic regression model summary table, it gives us a lot of information regarding it. First, similar to the previous 2 summary tables, we can see that the right contrast coefficient is still a negative value which is a trend amongst all 3 of the fittings. Next, we can also observe that the p-values for all of the different variables are above .05 again. It is also worth noting that the left and right contrast p-values are very close to the p-values for the linear regression model while the spike mean and standard deviation p-values are not similar. Also from the summary chart, we can see that it has an AIC value of 6054.4 which is lower than the AIC value given to us from the general linear model which can be telling in which fitting is better for our data set. Overall, similar to the previous 2, this summary table for the logistic regression model is very helpful in making conclusions for our experiment. 
+
+Now, we can look at the 3 logistic regression model plots/graphs. The first plot shows the residual vs Fitted values plot which compares the predicted values and the Pearson Residuals for the entire data set. This graph is important for our dataset because it allows us to see how the predicted values differ from not only the actual values, but also the hypothesized values that can be seen from the red line. This plot although it simply looks like 2 lines next to each other, is very important in achieving our end goal because it allows us to see how the predicted values differ and by how much they do if at all. Next, we can look at the QQ-plot for the data, which shows the comparison of the theoretical quantities of our data being measured next to the standard deviation of the residuals. When looking at this QQ-plot for our data, we can see that a lot of the points are very very far from the regression line which insists that the two are not significantly related to each other. The last plot shows the predicted values being compared to the root of the Pearson Residuals which were a factor on the first plot discussed. Overall, all of these plots can prove to be significant in our experiment by showing the comparison of theoretical values vs. another statistic. 
+
+
+
+### Looking At The PCA Summary Table
+
+Now, we will look at a PCA summary chart for the data and some of the important variable for our end goal.
+
+
+```{r, echo=FALSE, comment=NA}
+data.after.pca = entire.session.summary[, c("contrast_left", "contrast_right", "spks_mean", "spks_sd")]
+pca.data.new = scale(data.after.pca)
+
+pca.result.data = prcomp(pca.data.new, scale. = TRUE)
+
+summary(pca.result.data)
+
+```
+
+The table above, it gives us information regarding the various groups of data after PCA was performed. What PCA does for our experiment is that it allows us to gather up large amounts of information and separate them into smaller ones so they are easier to understand. PCA also allows to give graphs and visual components which can be in the form of graphs or data tables which enables us to compare two sets of data or variables side by side. This is important in our overall experiment because since we are trying to create a predictive model, we can see whether or not there are trends or patterns of the data which allows us to account for outliers and other obscure observations for our data. When analyzing this table above, we can see that it give us information for PC 1, 2, 3 and 4. The information povided about these groups are standard deviation of the spikes, along with variance and the overall proportion. This table is very very important for reaching the end goal because it allows us to see the effect the PCA has on the data and compare the similarities and differences. When looking at the values for this table, we can see that the standard deviations are all very different from each other and that no two groups are close to each other with the only exception being 2 and 3. Similar to all of the other tables, although it is just a simple table with numbers after PCA was applied, it is still very telling and informational in the long run for our experiment. 
+
+
+
+### PCA Line Graph for PCA Groups
+
+The plot that is going to be displayed will depict the variances for the different PCA groups.
+
+```{r, echo=FALSE, comment=NA}
+plot(pca.result.data, type = "l", main = "Line Graph of PCA Group Variances")
+```
+
+Lastly, we can look at the line graph which displays the different PCA's and their variances. First, we can analyze and make some obersvations about the graph. We can see that PCA1 has the highest variance of the 4 with PCA4 having the lowest. These 2 have a difference of around 2 when being measure in terms of variance. Next, we can see that the second and third PCS groups have almost the same variance which an explain why that interval of the graph has a slop close to 0 as opposed to the other parts where the slope is negative. To end, this line graph gives us useful information regarding the 4 PCA groups and their variances and how they differ or share similar traits to each other. 
+
+
+
+### Misclassification Error Rate for Entire Session
+
+In this part of the experiment, we will look at the misclassification error rate for the entire Session 3. 
+
+```{r, echo=FALSE, comment=NA}
+predictions = predict(logistic.regression.model, newdata = entire.session.summary, type = "response")
+
+binary.predictions = ifelse(predictions >= 0.5, 1, 0)
+
+misclassification_rate = mean(binary.predictions != entire.session.summary$feedback_type)
+
+cat("Misclassification Error Rate:", misclassification_rate, "\n")
+
+```
+
+In our data set, when computing the misclassification error rate for our session sample, we get a value of .2899. This is key in our experiment and our overall end goal because it tells us that for the entire session 3, the error rate that the data is misclassified is .2899. This is a generally low number although there is no specific threshold to determine whether or not this value is high or should be alarming for our experiment. Overall, this is value is very useful in creating our predictive model because it can help us determine the overall error rate in some of our computations. 
+
+
+
+
+
+Throughout this section, we have looked at various models to help us build our predictive model by looking at which is the best and which one will optimize our chances in predicting the right model. Also in this section, we were able to look at all of the data at once to help us identify any obvious patterns within the data. We also were able to apply certain procedures and fit certain methdos to help us see the data in a more optimal matter by applying PCA and ARIMA. Overall, all of these steps taken have helped us identify and build our predictive model and moves us one step closer to achieving our end goal. 
+
+
+
+
+# Section 4: Predictive Modeling
+
+In this section of the experiment, we will attempt to build a model that is based off of our previous findings which will predict whether or not a random trial will be a success or failure. This predictive model will take into account a multitude of different variables that have been looked at earlier and will look in depth into the graphs and tables to look for certain patterns or other trends within the data. Although the predictive model may not be 100% accurate, it will attempt to predict the feedback type which is based off of other variables that have been looked at prior. Overall, this predictive model will take in account many different factors that have been discussed in prior parts and will hopefully predict the outcome of random trials. 
+
+
+### Building the Predictive Model
+
+Now, we will attempt to build a predictive model which then will be used on the 100 random trials to see if the model is accurate or not. 
+
+```{r, echo=FALSE, comment=NA}
+entire.session.summary = list()
+
+for(i in 1:length(session)) {
+  feedback_type = session[[i]]$feedback_type
+  spk_count = sapply(session[[i]]$spks, function(x) sum(rowSums(x)))
+  left_contrast = session[[i]]$contrast_left
+  right_contrast = session[[i]]$contrast_right
+  
+  entire.session.summary[[i]] = data.frame(feedback_type, spk_count, left_contrast, right_contrast)
+}
+
+combined.data.whole.thing = do.call(rbind, entire.session.summary)
+
+combined.data.whole.thing$feedback_type = as.factor(combined.data.whole.thing$feedback_type)
+
+set.seed(123)
+training.help.practice = createDataPartition(combined.data.whole.thing$feedback_type, p = .8, list = FALSE)
+training.data.model = combined.data.whole.thing[training.help.practice, ]
+testing.data.model = combined.data.whole.thing[-training.help.practice, ]
+
+model = train(feedback_type ~ ., data = training.data.model, method = "glm", family = "binomial")
+
+predictions = predict(model, newdata = testing.data.model)
+
+confusion_matrix = confusionMatrix(predictions, testing.data.model$feedback_type)
+
+confusion_matrix
+```
+
+
+In the results above, we can see that the model we have creative is around 71% accurate which isn't the best, but also is not really really low. This model was created based off of the previous findings of patterns and looking at graphs in the previous sections. This predictive model was taken from the logistic model that was fit on our data in section 3 which was based off of the low AIC value along with a few other factors within the table. Overall, this predictive model was based off of a multitude of factors and now will be put to the test by seeing how many correct trials it can predict of 100 random samples.
+
+
+
+As seen throughout this section, we were able to create a predictive model which will be used later on to predict whether or not random trials will be a success or failure. This predictive model took account the various patterns and trends seen throughout sections 2 and 3 which consisted of graphs and summary tables. Overall, this predictive model will be used to see whether or not it can correctly predict 100 random trials of the experiment. 
+
+
+
+
+
+# Section 5: Prediction performance on the test sets
+
+This section of the project will take 100 random trials and apply them to the predictive model made in Section 4, to see whether or not it can correctly predict the outcome of those trials. The performance of this model will be determined on how many it can get right out of the 100 to see how accurate it truly is or not. 
+
+```{r, echo=FALSE, comment=NA}
+setwd("/Users/nolantanaka/Desktop/test")
+
+test = list()
+overview = data.frame(mouse_name = character(), date_exp = character())
+
+for(i in 1:2){
+  session[[i]] = readRDS(paste("test", i, ".rds", sep=""))
+  overview = rbind(overview, data.frame(mouse_name = session[[i]]$mouse_name, 
+                                        date_exp = session[[i]]$date_exp))
+}
+print(overview)
+
+
+new.data_frame = data.frame()
+for(i in 1:2){
+  temp = data.frame(session[[i]]$feedback_type, session[[i]]$mouse_name)
+  colnames(temp)=c("feedback_type", "mouse_name")
+  new.data_frame = rbind(new.data_frame, temp)
+}
+
+new_dataset <- na.omit(new.data_frame)
+```
+
+
+
+
+```{r, echo=FALSE, comment=NA}
+data.table.new = data.table()
+for(i in 1:2){
+  data.names = data.frame(
+    contrast_left_data.new = session[[i]]$contrast_left,
+    contrast_right_data.new = session[[i]]$contrast_right,
+    session_data.new = rep(1, length(session[[i]]$contrast_left)),
+    mouse_data.new = session[[i]]$mouse_name,
+    number_of_neurons_data.new = length(session[[i]]$brain_area),
+    brain_area_data.new = length(unique(session[[i]]$brain_area)),
+    number_of_trials_data.new = length(session[[i]]$spks),
+    feedback_type_data.new = session[[i]]$feedback_type
+  )
+  colnames(data.names) = c(
+    "contrast_left", "contrast_right", "session", "mouse",
+    "number_of_neurons", "brain_area", "number_of_trials", "feedback_type"
+  )
+  data.table = rbindlist(list(data.table.new, data.names))
+}
+
+data_frame.new = as.data.frame(data.table)
+data_frame.new$contrast_left = as.factor(data_frame.new$contrast_left)
+data_frame.new$contrast_right = as.factor(data_frame.new$contrast_right)
+data_frame.new$session = as.factor(data_frame.new$session)
+data_frame.new$mouse = as.factor(data_frame.new$mouse)
+data_frame.new$feedback_type = as.factor(data_frame.new$feedback_type)
+```
+
+
+
+
+```{r, echo=FALSE, comment=NA}
+
+partial_summary = list()
+
+for (i in 1:2) {
+  trial.summary.new = data.frame(
+    session_number = numeric(),
+    feedback_type = numeric(),
+    contrast_left = numeric(),
+    contrast_right = numeric(),
+    spks_mean = numeric(),
+    spks_sd = numeric()
+  )
+
+  for (j in 1:length(session[[i]]$feedback_type)) {
+    spks_mean = mean(c(session[[i]]$spks[[j]]))
+    spks_sd = sd(c(session[[i]]$spks[[j]]))
+
+    trial.summary.new = rbind(trial.summary.new, data.frame(
+      session_number = i,
+      feedback_type = session[[i]]$feedback_type[j],
+      contrast_left = session[[i]]$contrast_left[j],
+      contrast_right = session[[i]]$contrast_right[j],
+      spks_mean = spks_mean,
+      spks_sd = spks_sd
+    ))
+  }
+
+  partial_summary[[i]] = trial.summary.new
+}
+
+newsession_all = do.call(rbind, partial_summary)
+
+```
+
+
+
+```{r, echo=FALSE, comment=NA}
+newsession_all = list()
+
+for(i in 1:2) {
+  feedback_type = session[[i]]$feedback_type
+  spk_count = sapply(session[[i]]$spks, function(x) sum(rowSums(x)))
+  left_contrast = session[[i]]$contrast_left
+  right_contrast = session[[i]]$contrast_right
+  
+  newsession_all[[i]] = data.frame(feedback_type, spk_count, left_contrast, right_contrast)
+}
+
+newcombined_data = do.call(rbind, newsession_all)
+
+newcombined_data$feedback_type = as.factor(newcombined_data$feedback_type)
+
+set.seed(123)
+new.train_indices = createDataPartition(newcombined_data$feedback_type, p = .8, list = FALSE)
+new.train_data = newcombined_data[new.train_indices, ]
+new.test_data = newcombined_data[-new.train_indices, ]
+
+model = train(feedback_type ~ ., data = new.train_data, method = "glm", family = "binomial")
+
+predictions.2 = predict(model, newdata = new.test_data)
+
+confusion_matrix.2 = confusionMatrix(predictions.2, new.test_data$feedback_type)
+
+confusion_matrix.2
+```
+
+From the output above, we can see that the test data being put into the model built in section 4 yields an accuracy of 72.5%. Although this accuracy is not particularly high, it still is good as it essentially predicts 3 in every 4 trials right from the test data. We can also see the 95% confidence interval for the accuracy to see how truly accurate the overall model is when trying to predict whether or not a specific trial would be a success or failure. Overall, the predictive model that was built previously did a decent job of trying to predict whether or not certain trials would be successes or failures. 
+
+
+
+
+# Section 6 Discussion
+
+Throughout this project, various graphs, tables, and charts were looked at in order to identify patterns and trends within the data. In section 2, a multitude of different graphs, and various charts were looked at for session 1 to see if there were any patterns or trends to be found within it. These plots and graphs consisted of looking at line graphs for the average spikes within different areas of the brain, along with raster plots to see how the neuronic activity differs in each of the brain areas. When looking at these graphs, it was important to note any general trends in the average spikes for brain areas because that would be one of the factors that would be taken account for when making the predictive model. Also in section 2, we further looked at how some of the trials differed within each session to see if there are any patterns from trial to trial within session 1. This section was vital in the overall conduction of the end goal by showing any patterns or trends which would be used to build the predictive model around. 
+
+In the next section, the data was integrated which took a further in depth look at the patterns and trends that were identified in section 2. Within this section, different models and methods were fit to the data such as ARIMA and PCA in order to help us compare the data to each other which made it easier to identify trends. Also in this section, we looked at various models being fit to our data which would then be chosen as the model to build our predictive model around. This section was overall very important to achieving our end goal by allowing us to compare the data and transforming it in different ways to help us see and get a foundation for our predictive model. 
+
+Lastly, the last part of the experiment was building and testing the predictive model. When building the predictive model, the logistic regression model fitting was used in order to optimize the best model for our experiment. When looking at the overall accuracy of the predictive model when running it through the various trials to see if it was correct or not, it yielded an accuracy of 72.5%. This accuracy although is high, could be better overall by making some tweaks in building the predictive model. Some of the ways that the accuracy could be improved is by looking at all of the various sessions and seeing specifically how each session compares to each other, but the time and space did not allow us to do that. Another way that the accuracy could have been improved is by looking how the spikes differ from all of the trials instead of just the trials within a certain section. This would help the overall accuracy because it would allow us to identify and sort out various clusters within the data to identify what either caused a low spike in the brain, or a high spike. Also, another factor that could have increased the accuracy of the model would have been to fit models for an infinite amount of different model types instead of just general linear, logistic, and linear regression model. This would have overal helped the model accuracy because it would have given an infinite amount of different models to chose from, but similar to comparing all of the sessions, it would have been way too much work and was not necessary for our model, but if the time was present, then that would have been the best case scenario. Lastly, one of the final ways that the model could have been improved is by transforming the data under multiple different methods which then could be fit on the various models like linear and logistic. This would have helped in building our predictive model because it would have allowed for us to see how transforming the data could've made the accuracy better or worse. Overall, all of these methods talked about would have improved the overall accuracy of the predictive model, but the accuracy that was sampled of 72.5% is still very passable. 
+
+Although a passable accuracy of 72.5% is very good, there were some possible errors or other problems that occurred throughout the experiment. One of the main problems that was faced during this experiment was when building a confusion matrix for the predictive model, getting the sample size correct for how many trials were run. I was stuck on this problem for countless hours and tried to fix it a countless amount of times, but I ultimately was not able to find a solution on how to fix this problem as the accuracy for both were passable. Another place where errors could have played a role in is in section 3 when comparing the data. Errors could have played a role in this section because only some sessions and trials were compared to as opposed to doing all of them which could have either raised or lowered the overall accuracy. Next, other place where the accuracy could have been boosted or errors could have been added is when applying the various models to the data, we did 3 different types which allowed us to pick the best whereas we could have picked one and transformed the data only off of that one specific model type. Another place where error could have been added into our model is in part 2 when looking at session 1 only instead of looking at all of the various sessions to see how they differ from each other. This could have been helpful by showing us how the sessions have patterns or not within each other instead of looking at 1 session and basing the rest off of that one session alone which in this case was the first session. 
+
+To conclude, this experiment and project as a whole looked at the different mice within the experiment and tried to build a predictive model to predict whether or not their trials would be a success or a failure. As seen throughout the project, a predictive model was made and even though it may have not been the most accurate when being compared to others, it still got the job done of making predictions. As talked about before, there were some roadblocks that were ran into with this experiment and some errors could have occurred within the predictive model which would impact it as a whole. One of the main roadblocks that was faced is that at times it was hard to tell what each section asked for along with the overall coding and how we were supposed to code even though we may have not have sufficient resources prior to starting this project. On the other hand, factors could be taken account for which could increase the overall accuracy which was explained earlier. In the end, a predictive model was constructed and the end goal was reached of creating a predictive model to predict various trials. 
+
+
+
+
+
+
+
+
+
+
+
+
+
